@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
-import SftpClient from "ssh2-sftp-client";
+const SftpClient = require("ssh2-sftp-client");
 
 function getPrivateKey() {
   return (process.env.SSH_PRIVATE_KEY || "").replace(/\\n/g, "\n");
 }
 
-async function removeDirRecursive(sftp: any, remotePath: string) {
+async function removeDirRecursive(sftp, remotePath) {
   const exists = await sftp.exists(remotePath);
   if (!exists) return;
 
@@ -16,26 +15,31 @@ async function removeDirRecursive(sftp: any, remotePath: string) {
 
     if (item.type === "d") {
       await removeDirRecursive(sftp, full);
-      await sftp.rmdir(full, true);
+      try {
+        await sftp.rmdir(full, true);
+      } catch (e) {}
     } else {
       await sftp.delete(full);
     }
   }
 }
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      ok: false,
+      erro: "Método não permitido",
+    });
+  }
 
-    const email = String(body?.email || "").trim();
-    const server_user = String(body?.server_user || "").trim();
-    const project_name = String(body?.project_name || "").trim();
+  try {
+    const { email, server_user, project_name } = req.body || {};
 
     if (!email || !server_user || !project_name) {
-      return NextResponse.json(
-        { ok: false, erro: "email, server_user e project_name são obrigatórios" },
-        { status: 400 }
-      );
+      return res.status(400).json({
+        ok: false,
+        erro: "email, server_user e project_name são obrigatórios",
+      });
     }
 
     const host = "35.232.156.225";
@@ -65,7 +69,7 @@ export async function POST(req: Request) {
       await sftp.end();
     }
 
-    return NextResponse.json({
+    return res.status(200).json({
       ok: true,
       deleted: true,
       project_name,
@@ -73,13 +77,10 @@ export async function POST(req: Request) {
       email,
       server_user,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        ok: false,
-        erro: error?.message || "erro ao apagar projeto",
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      erro: error.message || "erro ao apagar projeto",
+    });
   }
-}
+};
