@@ -4,7 +4,7 @@ function getPrivateKey() {
   return (process.env.SSH_PRIVATE_KEY || "").replace(/\\n/g, "\n");
 }
 
-async function removeDirRecursive(sftp, remotePath) {
+async function removeDirContentsRecursive(sftp, remotePath) {
   const exists = await sftp.exists(remotePath);
   if (!exists) return;
 
@@ -14,7 +14,7 @@ async function removeDirRecursive(sftp, remotePath) {
     const full = `${remotePath}/${item.name}`;
 
     if (item.type === "d") {
-      await removeDirRecursive(sftp, full);
+      await removeDirContentsRecursive(sftp, full);
       try {
         await sftp.rmdir(full, true);
       } catch (e) {}
@@ -33,12 +33,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { email, server_user, project_name } = req.body || {};
+    const { email, server_user } = req.body || {};
 
-    if (!email || !server_user || !project_name) {
+    if (!email || !server_user) {
       return res.status(400).json({
         ok: false,
-        erro: "email, server_user e project_name são obrigatórios",
+        erro: "email e server_user são obrigatórios",
       });
     }
 
@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
     const username = process.env.MANAGED_SSH_USER || "root";
     const privateKey = getPrivateKey();
 
-    const remoteProjectPath = `/srv/projects/${server_user}/${project_name}`;
+    const remoteUserPath = `/srv/projects/${server_user}`;
 
     const sftp = new SftpClient();
 
@@ -59,12 +59,7 @@ module.exports = async function handler(req, res) {
     });
 
     try {
-      await removeDirRecursive(sftp, remoteProjectPath);
-
-      const exists = await sftp.exists(remoteProjectPath);
-      if (exists) {
-        await sftp.rmdir(remoteProjectPath, true);
-      }
+      await removeDirContentsRecursive(sftp, remoteUserPath);
     } finally {
       await sftp.end();
     }
@@ -72,15 +67,15 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       deleted: true,
-      project_name,
-      remote_path: remoteProjectPath,
+      remote_path: remoteUserPath,
       email,
       server_user,
+      mode: "wipe-user-folder-contents"
     });
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      erro: error.message || "erro ao apagar projeto",
+      erro: error.message || "erro ao apagar conteúdo do usuário",
     });
   }
 };
