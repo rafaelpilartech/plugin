@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.TOKEN_VALIDACAO}`,
+          AccessTokenApi: process.env.TOKEN_VALIDACAO,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ email })
@@ -19,10 +19,14 @@ export default async function handler(req, res) {
     );
 
     const data = await resp.json();
-    const usuario = data[0];
+    const usuario = Array.isArray(data) ? data[0] : data;
 
-    if (!usuario) {
-      return res.status(404).json({ ok: false, erro: "usuário não encontrado" });
+    if (!usuario || Object.keys(usuario).length === 0) {
+      return res.status(404).json({
+        ok: false,
+        erro: "usuário não encontrado",
+        debug: data
+      });
     }
 
     return res.status(200).json({
