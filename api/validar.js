@@ -19,27 +19,22 @@ export default async function handler(req, res) {
     );
 
     const data = await resp.json();
+
     const usuario = Array.isArray(data) ? data[0] : data;
 
-    if (!usuario || Object.keys(usuario).length === 0) {
-      return res.status(404).json({
-        ok: false,
-        erro: "usuário não encontrado",
-        debug: data
-      });
+    if (!usuario) {
+      return res.status(404).json({ ok: false });
     }
 
     return res.status(200).json({
       ok: true,
-      plano: usuario.plano,
-      user: usuario.user_ubuntu
+      usuario: usuario
     });
 
   } catch (e) {
     return res.status(500).json({
       ok: false,
-      erro: "erro na API",
-      detalhe: e.message
+      erro: e.message
     });
   }
 }
