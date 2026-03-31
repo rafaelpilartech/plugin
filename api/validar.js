@@ -7,17 +7,21 @@ export default async function handler(req, res) {
 
   try {
     const resp = await fetch(
-      `http://35.232.156.225:9000/usuarios?email=${encodeURIComponent(email)}`,
+      "http://35.232.156.225:9000/usuarios",
       {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.TOKEN_VALIDACAO}`
-        }
+          Authorization: `Bearer ${process.env.TOKEN_VALIDACAO}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email })
       }
     );
 
-    const usuario = await resp.json();
+    const data = await resp.json();
+    const usuario = data[0];
 
-    if (!usuario || usuario.usuario === null) {
+    if (!usuario) {
       return res.status(404).json({ ok: false, erro: "usuário não encontrado" });
     }
 
@@ -28,6 +32,10 @@ export default async function handler(req, res) {
     });
 
   } catch (e) {
-    return res.status(500).json({ ok: false, erro: "erro na API" });
+    return res.status(500).json({
+      ok: false,
+      erro: "erro na API",
+      detalhe: e.message
+    });
   }
 }
