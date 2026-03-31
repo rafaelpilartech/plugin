@@ -6,3 +6,4 @@ export default async function handler(req, res) {
     email_recebido: email || null
   });
 }
+// update
