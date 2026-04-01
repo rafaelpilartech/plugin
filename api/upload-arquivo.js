@@ -1,5 +1,5 @@
 const SftpClient = require("ssh2-sftp-client");
-const formidable = require("formidable");
+const { formidable } = require("formidable");
 const path = require("path");
 
 module.exports.config = {
