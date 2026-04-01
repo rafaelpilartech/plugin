@@ -1,9 +1,5 @@
 const SftpClient = require("ssh2-sftp-client");
 
-function getPrivateKey() {
-  return (process.env.SSH_PRIVATE_KEY || "").replace(/\\n/g, "\n");
-}
-
 async function removeDirContentsRecursive(sftp, remotePath) {
   const exists = await sftp.exists(remotePath);
   if (!exists) return;
@@ -33,21 +29,27 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { email, server_user } = req.body || {};
+    const {
+      email,
+      server_user,
+      ssh_host,
+      ssh_port,
+      ssh_user,
+      ssh_password
+    } = req.body || {};
 
-    if (!email || !server_user) {
+    if (!email || !server_user || !ssh_host || !ssh_user || !ssh_password) {
       return res.status(400).json({
         ok: false,
-        erro: "email e server_user são obrigatórios",
+        erro: "email, server_user, ssh_host, ssh_user e ssh_password são obrigatórios",
       });
     }
 
-    const host = "35.232.156.225";
-    const port = 22;
-    const username = process.env.MANAGED_SSH_USER || "root";
-    const privateKey = getPrivateKey();
+    const host = String(ssh_host).replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const port = Number(ssh_port || 22);
+    const username = ssh_user;
 
-    const remoteUserPath = `/srv/projects/${server_user}`;
+    const remoteUserPath = `/projetos`;
 
     const sftp = new SftpClient();
 
@@ -55,7 +57,7 @@ module.exports = async function handler(req, res) {
       host,
       port,
       username,
-      privateKey,
+      password: ssh_password,
     });
 
     try {
@@ -70,12 +72,12 @@ module.exports = async function handler(req, res) {
       remote_path: remoteUserPath,
       email,
       server_user,
-      mode: "wipe-user-folder-contents"
+      mode: "wipe-server-folder-contents"
     });
   } catch (error) {
     return res.status(500).json({
       ok: false,
-      erro: error.message || "erro ao apagar conteúdo do usuário",
+      erro: error.message || "erro ao apagar conteúdo do servidor",
     });
   }
 };
